@@ -1,2 +1,5 @@
 .ipynb_checkpoints
 .DS_StoreProject_datasets/*.csv
+
+# datasets
+Project_datasets/*.csv
