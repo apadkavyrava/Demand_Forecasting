@@ -3,3 +3,5 @@
 
 # datasets
 Project_datasets/*.csv
+.DS_Store
+**/.DS_Store
