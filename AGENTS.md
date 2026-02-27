@@ -23,13 +23,12 @@ Bicycles-Booking-Prediction/
 │   ├── 04_Data_balance.ipynb
 │   ├── 05_Data_bins.ipynb
 │   ├── 06_Station_neighbors.ipynb
-│   ├── 07_Hourly_aggregation.ipynb
-│   ├── 08_Hourly_features_and_model.ipynb
-│   └── 09_Hourly_two_stage_model.ipynb
+│   └── 07_Hourly_aggregation.ipynb
 ├── Project_datasets/        # Processed datasets (CSVs in .gitignore)
-├── Project_goal             # Project goal description (text file)
 ├── Train_model/
-│   └── 01_Model_selection.ipynb
+│   ├── 01_Model_selection.ipynb
+│   ├── 02_Hourly_features_and_model.ipynb
+│   └── 03_Hourly_two_stage_model.ipynb
 └── AGENTS.md
 ```
 
@@ -45,20 +44,16 @@ Notebooks must be run in order, as each depends on outputs from the previous ste
 4. **04_Data_balance.ipynb** - Bins trip counts into 4 classes (low/mid/high/peak), applies SMOTE to balance classes. Outputs `cleaned_bins.csv` (254/class) and `cleaned_bins_big.csv` (1000/class).
 5. **05_Data_bins.ipynb** - Validates regression vs classification approach, trains XGBClassifier on balanced data.
 
-### Hourly pipeline (notebooks 06-09, depends on 02)
+### Hourly data preparation (notebooks 06-07, depends on 02)
 
 6. **06_Station_neighbors.ipynb** - Finds K=5 nearest stations to each target station using Haversine distance. Creates station groups (6 stations each: target + 5 neighbors). Outputs `station_groups.csv` and `station_code_lookup.csv`.
 7. **07_Hourly_aggregation.ipynb** - Aggregates rides into 3-hour bins for rides starting in the Mont-Royal group and ending in the Berri group. Fills missing bins with zeros. Outputs `hourly_grouped_rides.csv`.
-8. **08_Hourly_features_and_model.ipynb** - Creates 3-hour bin features (calendar, cyclical encoding, rush period flags, lags at 1/2/3/8/56 bin offsets, rolling windows, interaction terms). No holiday features. Trains single-stage 4-class classification (RandomForest, GradientBoosting, XGBoost). Saves `hourly_features.csv`. Train/test split: 2014-2016 / 2017.
-9. **09_Hourly_two_stage_model.ipynb** - Two-stage 3-class classification. Loads `hourly_features.csv` from notebook 08. Stage 1: GradientBoosting binary (zero vs non-zero). Stage 2: GradientBoosting binary (low 1-3 vs high 4+) on non-zero subset. Both stages use SMOTE. Includes cross-validation (TimeSeriesSplit, 5 folds) and per-stage feature importance. Outputs `model_results_hourly_two_stage.csv`.
 
-## Model Training
+## Model Training (`Train_model/`)
 
-**01_Model_selection.ipynb** - Compares regression (XGBoost, Random Forest, Poisson) and classification (XGBClassifier) for daily prediction. Classification with SMOTE-balanced bins is the recommended daily approach.
-
-**08_Hourly_features_and_model.ipynb** - Single-stage 4-class hourly classification (77% accuracy).
-
-**09_Hourly_two_stage_model.ipynb** - Two-stage 3-class hourly classification (89% accuracy, best hourly model).
+1. **01_Model_selection.ipynb** - Compares regression (XGBoost, Random Forest, Poisson) and classification (XGBClassifier) for daily prediction. Classification with SMOTE-balanced bins is the recommended daily approach.
+2. **02_Hourly_features_and_model.ipynb** - Creates 3-hour bin features (calendar, cyclical encoding, rush period flags, lags at 1/2/3/8/56 bin offsets, rolling windows, interaction terms). No holiday features. Trains single-stage 4-class classification (RandomForest, GradientBoosting, XGBoost). Saves `hourly_features.csv`. Train/test split: 2014-2016 / 2017. Accuracy: 77%.
+3. **03_Hourly_two_stage_model.ipynb** - Two-stage 3-class classification. Loads `hourly_features.csv` from notebook 02. Stage 1: GradientBoosting binary (zero vs non-zero). Stage 2: GradientBoosting binary (low 1-3 vs high 4+) on non-zero subset. Both stages use SMOTE. Includes cross-validation (TimeSeriesSplit, 5 folds) and per-stage feature importance. Outputs `model_results_hourly_two_stage.csv`. **Accuracy: 89% (best hourly model).**
 
 ## Key Datasets (git-ignored)
 
@@ -93,7 +88,7 @@ Notebooks must be run in order, as each depends on outputs from the previous ste
 ## Common Tasks
 
 - **Regenerate daily datasets**: Run notebooks 01-05 in `Data_preparation/` sequentially.
-- **Regenerate hourly datasets**: Run notebook 02 (if not already done), then 06-08 sequentially.
+- **Regenerate hourly datasets**: Run notebook 02 (if not already done), then 06-07 in `Data_preparation/`.
 - **Retrain daily model**: Run `Train_model/01_Model_selection.ipynb` after daily datasets are generated.
-- **Retrain hourly model**: Run notebooks 08 then 09 in `Data_preparation/` after hourly datasets are generated.
+- **Retrain hourly model**: Run `Train_model/02_Hourly_features_and_model.ipynb` then `Train_model/03_Hourly_two_stage_model.ipynb` after hourly datasets are generated.
 - **Add new year of data**: Update `02_Data_aggregation.ipynb` to include new CSVs in `Data/`, then re-run the relevant pipeline(s).
