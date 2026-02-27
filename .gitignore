@@ -1,7 +1,11 @@
 .ipynb_checkpoints
 
+# Raw data (re-download from BIXI open data)
+Data/
+Downloaded_data/
 
-# datasets
+# Processed datasets (regenerate by running notebooks)
 Project_datasets/*.csv
+
 .DS_Store
 **/.DS_Store
