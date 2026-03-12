@@ -1,8 +1,8 @@
-# Model Investigation Report
+# Model Evaluation and Experimentation Report
 
 ## Problem
 
-Predict bicycle trip demand on the BIXI Montreal route from Metro Mont-Royal (station 6184) to Berri/de Maisonneuve (station 6015) using 2014-2017 historical data (April-November seasons).
+Predict bicycle trip demand on the route from X station to Y station using 2014-2017 historical data. 
 
 ---
 
@@ -29,8 +29,7 @@ Predict bicycle trip demand on the BIXI Montreal route from Metro Mont-Royal (st
 
 **Bins:** low (1-2), mid (3-4), high (5-6), peak (7+)
 
-### XGBClassifier (1000 estimators, early stopping)
-
+*An exaple severe overfitting when the dataset was increase to 10000 samples from 535 original samples.*
 | Class | Precision | Recall | F1 | Support |
 |-------|-----------|--------|----|---------|
 | low (1-2) | 0.96 | 0.96 | 0.96 | 191 |
@@ -39,16 +38,20 @@ Predict bicycle trip demand on the BIXI Montreal route from Metro Mont-Royal (st
 | peak (7+) | 1.00 | 1.00 | 1.00 | 207 |
 | **Overall** | | | **0.98** | **800** |
 
-- Train Accuracy: 100%
-- **Test Accuracy: 97.6%**
+- *Train Accuracy: 100%*
+- *Test Accuracy: 97.6%*
+  
+**Conclusion:** Data generation did not improve the results; no threshold was found where the model was neither overfitting nor producing poor predictions.
 
 ---
 
 ## Phase 3: Hourly (3-Hour Bin) Classification — Single Stage
 
-**Approach:** Increase granularity to 3-hour bins (8 bins/day). Expanded station scope using K=5 nearest neighbors per target station. Time-based split: 2014-2016 train, 2017 test. SMOTE balanced to 2542 samples/class.
+**Approach:** 
+- Increase granularity to 3-hour bins (8 bins/day).
+- Expanded station scope using K=5 nearest neighbors per target station.
 
-**Features (36):** Calendar, cyclical encoding (sin/cos for hour, day-of-week, month), rush period flags, lags at 1/2/3/8/56 bin offsets, rolling windows, interaction features, time period dummies.
+**Increase number of features (36):** Calendar, cyclical encoding (sin/cos for hour, day-of-week, month), rush period flags, lags at 1/2/3/8/56 bin offsets, rolling windows, interaction features, time period dummies.
 
 **Target:** 4 classes — zero (0 trips), low (1), mid (2-3), high (4+)
 
@@ -60,14 +63,6 @@ Predict bicycle trip demand on the BIXI Montreal route from Metro Mont-Royal (st
 | **GradientBoosting** | **77.0%** | **0.760** |
 | XGBoost | 76.3% | 0.753 |
 
-### Per-Class Results — RandomForest (73.6%)
-
-| Class | Precision | Recall | F1 | Support |
-|-------|-----------|--------|----|---------|
-| zero | 0.91 | 1.00 | 0.95 | 985 |
-| low | 0.56 | 0.46 | 0.51 | 339 |
-| mid | 0.48 | 0.47 | 0.47 | 397 |
-| high | 0.45 | 0.39 | 0.42 | 175 |
 
 ### Per-Class Results — GradientBoosting (77.0%)
 
@@ -78,14 +73,6 @@ Predict bicycle trip demand on the BIXI Montreal route from Metro Mont-Royal (st
 | mid | 0.56 | 0.63 | 0.59 | 397 |
 | high | 0.65 | 0.49 | 0.56 | 175 |
 
-### Per-Class Results — XGBoost (76.3%)
-
-| Class | Precision | Recall | F1 | Support |
-|-------|-----------|--------|----|---------|
-| zero | 0.92 | 0.99 | 0.95 | 985 |
-| low | 0.53 | 0.42 | 0.47 | 339 |
-| mid | 0.55 | 0.60 | 0.58 | 397 |
-| high | 0.66 | 0.50 | 0.57 | 175 |
 
 ### Cross-Validation (5-fold TimeSeriesSplit, XGBoost)
 
@@ -104,7 +91,9 @@ Predict bicycle trip demand on the BIXI Montreal route from Metro Mont-Royal (st
 
 ## Phase 4: Hourly (3-Hour Bin) — Two-Stage Classification
 
-**Insight:** Separate the easy problem (zero vs non-zero) from the hard one, and reduce non-zero classes from 3 to 2 by merging the hard-to-distinguish low and mid bins.
+**Approach:**  
+- Separate the easy problem (zero vs non-zero) from the hard onу
+- Кeduce non-zero classes from hight-mid-low  to hight-low bins.
 
 **Architecture:**
 - **Stage 1:** GradientBoosting binary — zero vs non-zero (SMOTE balanced)
@@ -165,47 +154,24 @@ Confusion matrix:
 
 | Feature | Importance |
 |---------|-----------|
-| member_ratio | 0.911 |
-| rolling_std_8 | 0.009 |
-| day_of_month | 0.007 |
-| rolling_mean_same_bin_7d | 0.007 |
-| lag_8 | 0.006 |
-| lag_1 | 0.006 |
-| rolling_mean_3 | 0.005 |
-| rolling_mean_4 | 0.004 |
-| lag_2 | 0.004 |
-| lag_3 | 0.004 |
-
-**Stage 2 (low vs high):**
-
-| Feature | Importance |
-|---------|-----------|
-| member_ratio | 0.483 |
+| member_ratio | 0.211 |
 | lag_56 | 0.109 |
 | lag_8 | 0.066 |
-| lag_1 | 0.030 |
+| lag_3 | 0.030 |
 | year | 0.029 |
 | rolling_mean_same_bin_7d | 0.026 |
 | rolling_std_8 | 0.025 |
-| day_of_month | 0.024 |
-| dow_sin | 0.022 |
-| bin_cos | 0.021 |
+| day_of_month | 0.024|
+| dow_sin	 | 0.022 |
+| bin_cos	| 0.021 |
 
----
 
 ## Summary
 
 | Phase | Approach | Classes | Accuracy | Weighted F1 |
 |-------|----------|---------|----------|-------------|
 | 1 | Daily regression | — | Failed (R² < 0) | — |
-| 2 | Daily classification (XGBoost) | 4 | 97.6% | 0.98 |
+| 2 | Daily classification (XGBoost) | 4 | Failed 97.6%  (overfitting)| 0.98 |
 | 3 | Hourly single-stage (GradientBoosting) | 4 | 77.0% | 0.76 |
 | **4** | **Hourly two-stage (GradientBoosting)** | **3** | **88.9%** | **0.88** |
 
-**Key takeaways:**
-1. Regression failed on low-count data — classification with binning was the right approach.
-2. SMOTE was essential at every stage to handle class imbalance.
-3. Reducing the number of classes (4 → 3) by merging hard-to-separate bins gave the biggest accuracy boost (+12 percentage points).
-4. The two-stage architecture improved performance by letting each stage specialize on a different difficulty level.
-5. GradientBoosting consistently outperformed RandomForest and XGBoost on hourly data.
-6. `member_ratio` is the dominant feature in both stages (91% importance in Stage 1, 48% in Stage 2).
